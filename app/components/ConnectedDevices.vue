@@ -11,6 +11,7 @@ const sorted = useSorted(props.device.connected_devices, (a, b) => a.enumerator.
     v-for="connected_device in sorted"
     :key="connected_device.enumerator"
     class="flex gap-1 p-1 border rounded"
+    :class="devices.deviceEvents.get(props.device.device_id)?.event.receiver === connected_device.enumerator ? 'border-4 border-green-500' : ''"
   >
     <ConfirmableInput
       :value="connected_device.name || ''"

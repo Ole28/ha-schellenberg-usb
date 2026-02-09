@@ -5,7 +5,7 @@ export default defineEventHandler((event) => {
   const proxyUrl = config.proxyUrl
   const path = event.path
   const target = joinURL(proxyUrl, path)
-  console.log(`Proxying request to: ${target}`)
+  console.log(`[NUXT] Proxying request to: ${target}`)
 
   return proxyRequest(event, target)
 })

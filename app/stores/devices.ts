@@ -39,20 +39,41 @@ export const deviceStore = defineStore('devices', () => {
     } else return timestampB - timestampA
   }).filter(device => device.device_id !== self.value?.device_id))
 
-  let deviceEventsListener = new EventSource(runtimeConfig.public.openFetch.schellenberg.baseURL + 'api/devices/events')
+  // WebSocket connection for device events
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const wsUrl = `${runtimeConfig.public.openFetch.schellenberg.baseURL}/api/devices/events`
+  let ws: WebSocket | null = null
 
-  deviceEventsListener.onmessage = (event: MessageEvent<string>) => {
-    const eventData = JSON.parse(event.data) as Event
-    deviceEvents.set(eventData.sender.device_id, { timestamp: new Date(), event: eventData })
-    debounceRefresh()
+  function connectWebSocket() {
+    console.log('[WebSocket] Connecting to:', wsUrl)
+    ws = new WebSocket(wsUrl)
+
+    ws.onopen = () => {
+      console.log('[WebSocket] Connected')
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const eventData = JSON.parse(event.data) as Event
+        console.log('[WebSocket] Received event:', eventData.sender.device_id)
+        deviceEvents.set(eventData.sender.device_id, { timestamp: new Date(), event: eventData })
+        debounceRefresh()
+      } catch (error) {
+        console.error('[WebSocket] Failed to parse message:', error)
+      }
+    }
+
+    ws.onerror = (error) => {
+      console.error('[WebSocket] Error:', error)
+    }
+
+    ws.onclose = () => {
+      console.log('[WebSocket] Disconnected, reconnecting in 1s...')
+      setTimeout(connectWebSocket, 1000)
+    }
   }
 
-  deviceEventsListener.onerror = async () => {
-    console.error('Error in device events stream.')
-    deviceEventsListener.close()
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    deviceEventsListener = new EventSource('/api/devices/events')
-  }
+  connectWebSocket()
 
   function changeSenderName(senderId: string, newName: string) {
     console.log(`Changing name of sender ${senderId} to ${newName}`)
