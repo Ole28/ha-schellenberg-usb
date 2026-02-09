@@ -9,6 +9,7 @@ arch:
 init: false
 map:
   - share:rw
+  - addon_config:rw
 options:
   serial: null
   mqtt_host: core-mosquitto

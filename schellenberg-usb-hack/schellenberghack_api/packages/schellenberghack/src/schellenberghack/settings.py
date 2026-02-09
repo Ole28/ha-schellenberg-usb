@@ -116,7 +116,7 @@ class Settings(BaseModel):
         )
 
 
-file = Path("/data/settings.json")
+file = Path("/config/settings.json")
 file.touch()
 
 SETTINGS = Settings.from_file(file)
