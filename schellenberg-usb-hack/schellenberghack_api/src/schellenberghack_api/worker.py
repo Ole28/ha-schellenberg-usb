@@ -42,6 +42,7 @@ class SendWorker:
                                 finished_transmission.clear()
                             message.post_run()
                 except asyncio.TimeoutError:
+                    transmitterLock.release()
                     print("Timeout in SendWorker")
         except asyncio.CancelledError:
             print("SendWorker cancelled")
