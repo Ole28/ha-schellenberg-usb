@@ -53,5 +53,11 @@ profile example flags=(attach_disconnected,mediate_deleted) {
     /bin/echo ix,
     /etc/passwd r,
     /dev/tty rw,
+
+    # USB/Serial device access
+    /dev/tty[A-Z]* rw,
+    /dev/serial/** rw,
+    /sys/bus/usb/devices/** r,
+    /sys/devices/** r,
   }
 }

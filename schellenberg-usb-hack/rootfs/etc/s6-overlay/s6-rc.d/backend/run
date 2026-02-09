@@ -1,0 +1,22 @@
+#!/command/with-contenv bashio
+
+bashio::log.info "Schellenberg API server starting..."
+
+# Read MQTT configuration from addon options
+export MQTT_HOST=$(bashio::config 'mqtt_host')
+export MQTT_PORT=$(bashio::config 'mqtt_port')
+export MQTT_USER=$(bashio::config 'mqtt_user')
+export MQTT_PASSWORD=$(bashio::config 'mqtt_password')
+export SERIAL=$(bashio::config 'serial')
+
+if [ -z "$SERIAL" ]; then
+    export MOCK_SERIAL=true
+fi
+export PYTHONUNBUFFERED=1
+
+bashio::log.info "MQTT configured: ${MQTT_HOST}:${MQTT_PORT}"
+bashio::log.info "Serial port: ${SERIAL}"
+
+cd /etc/schellenberghack_api
+
+exec python3 -u -m uvicorn schellenberghack_api.main:app --host 127.0.0.1 --port 8000 --lifespan on

@@ -1,0 +1,6 @@
+#!/usr/bin/with-contenv bashio
+
+bashio::log.info "Schellenberg Frontend starting..."
+
+cd /opt/schellenberg-nuxt
+exec node ./.output/server/index.mjs

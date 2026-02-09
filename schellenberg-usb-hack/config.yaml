@@ -1,0 +1,26 @@
+# https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
+name: Schellenberg USB Hack
+version: "0.9.3"
+slug: schellenberg-usb-hack
+description: Hacky control of Schellenberg devices via the Schellenberg USB QIVICON adapter.
+url: "https://github.com/home-assistant/addons-example/tree/main/example"
+arch:
+  - amd64
+init: false
+map:
+  - share:rw
+options:
+  serial: null
+  mqtt_host: core-mosquitto
+  mqtt_port: 1883
+  mqtt_user: null
+  mqtt_password: null
+schema:
+  serial: device(subsystem=tty)?
+  mqtt_host: str
+  mqtt_port: port
+  mqtt_user: str?
+  mqtt_password: password?
+ingress: true
+usb: true
+uart: true

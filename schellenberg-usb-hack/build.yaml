@@ -1,0 +1,5 @@
+# https://developers.home-assistant.io/docs/add-ons/configuration#add-on-dockerfile
+build_from:
+  amd64: ghcr.io/home-assistant/amd64-base-python:3.14-alpine3.23
+args:
+  TEMPIO_VERSION: "2021.09.0"
