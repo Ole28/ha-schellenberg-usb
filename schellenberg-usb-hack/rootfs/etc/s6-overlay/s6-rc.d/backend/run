@@ -17,6 +17,4 @@ export PYTHONUNBUFFERED=1
 bashio::log.info "MQTT configured: ${MQTT_HOST}:${MQTT_PORT}"
 bashio::log.info "Serial port: ${SERIAL}"
 
-cd /etc/schellenberghack_api
-
 exec python3 -u -m uvicorn schellenberghack_api.main:app --host 127.0.0.1 --port 8000 --lifespan on
