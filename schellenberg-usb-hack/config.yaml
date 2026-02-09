@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Schellenberg USB Hack
-version: "0.9.6"
+version: "0.9.7"
 slug: schellenberg-usb-hack
 description: Hacky control of Schellenberg devices via the Schellenberg USB QIVICON adapter.
 url: "https://github.com/home-assistant/addons-example/tree/main/example"
