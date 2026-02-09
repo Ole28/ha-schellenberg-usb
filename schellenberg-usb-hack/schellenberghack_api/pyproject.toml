@@ -1,0 +1,22 @@
+[project]
+name = "schellenberghack_api"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "schellenberghack",
+    "fastapi>=0.128.2",
+    "pydantic>=2.12.2",
+    "sse-starlette[uvicorn]>=3.2.0",
+    "aiomqtt>=2.3.0",
+    "websockets>=15.0",
+]
+
+[tool.uv.sources]
+schellenberghack = { workspace = true }
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[build-system]
+requires = ["uv_build>=0.9.29,<0.10.0"]
+build-backend = "uv_build"
