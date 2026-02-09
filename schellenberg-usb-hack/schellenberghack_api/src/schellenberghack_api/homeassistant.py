@@ -37,10 +37,10 @@ class HomeAssistantWorker:
         self.exit_event = Event()
         self.task = None
         self.client: aiomqtt.Client | None = None
-        self.device_states: dict[str, DeviceState] = {}
         self.send_queue: Queue[OutgoingSchellenbergMessage] = Queue()
         # Map device_name (slug) to list of (sender_id, enumerator) tuples
         self.device_mapping: dict[str, list[tuple[str, str]]] = {}
+        self.device_states: dict[str, DeviceState] = {}
 
     def _get_discovery_prefix(self) -> str:
         """Get the Home Assistant discovery prefix."""
@@ -56,13 +56,11 @@ class HomeAssistantWorker:
         return slug or "unnamed-device"
 
     def _get_device_name(self, device: Device) -> str:
-        """Generate a device key from the device name slug."""
         if device.name:
             return self._make_slug(device.name)
         return f"device-{device.enumerator}"
 
     def _get_unique_id(self, sender_id: str, enumerator: str) -> str:
-        """Generate a unique ID for Home Assistant."""
         return f"schellenberg_{sender_id}_{enumerator}"
 
     async def publish_discovery_config(
@@ -134,10 +132,23 @@ class HomeAssistantWorker:
             f"{len(SETTINGS.self_sender.connected_devices)} devices"
         )
 
+    def _update_device_mapping(self):
+        self.device_mapping.clear()
+        for sender in SETTINGS.senders:
+            for device in sender.connected_devices:
+                device_name = self._get_device_name(device)
+                if device_name not in self.device_mapping:
+                    self.device_mapping[device_name] = []
+                self.device_mapping[device_name].append(
+                    (sender.device_id, device.enumerator)
+                )
+
     async def _handle_command(self, message: aiomqtt.Message):
         """Handle incoming MQTT commands."""
         if not self.client:
             raise RuntimeError("[HANDLE_COMMAND] MQTT client not initialized")
+        self._update_device_mapping()
+
         try:
             topic = str(message.topic)
             payload = message.payload.decode()
@@ -148,6 +159,7 @@ class HomeAssistantWorker:
                 return
 
             device_name = topic.split("/")[1]
+            print(device_name, self.device_mapping)
 
             if device_name not in self.device_mapping:
                 print(f"[MQTT] Unknown device name: {device_name}")
@@ -183,8 +195,19 @@ class HomeAssistantWorker:
             self.device_states[device_name] = new_state
 
             for sender_id, enumerator in devices:
+                if not SETTINGS.self_sender \
+                        or SETTINGS.self_sender.device_id != sender_id:
+                    continue
+
+                def state_callback(state: DeviceState):
+                    async def delayed_callback():
+                        await asyncio.sleep(5)
+                        await self.update_device_state(device_name, state)
+                    asyncio.create_task(delayed_callback())
+
                 msg = OutgoingSchellenbergMessage(
-                    enumerator=enumerator, command=command
+                    enumerator=enumerator, command=command,
+                    state_callback=state_callback
                 )
                 await self.send_queue.put(msg)
                 print(
@@ -217,11 +240,10 @@ class HomeAssistantWorker:
                                "client not initialized")
 
         device_tuple = (message.sender.device_id, message.receiver)
-        device_name = next((key for key, _ in self.device_mapping.items()))
-        for key, devices in self.device_mapping.items():
-            if device_tuple in devices:
-                device_name = key
-                break
+        device_name = next((name for name, devices
+                            in self.device_mapping.items()
+                            if device_tuple in devices
+                            ), None)
         if not device_name:
             return
 

@@ -116,7 +116,7 @@ class Settings(BaseModel):
         )
 
 
-file = Path("settings.json")
-file.touch(exist_ok=True)
+file = Path("/data/settings.json")
+file.touch()
 
 SETTINGS = Settings.from_file(file)

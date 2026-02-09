@@ -24,34 +24,29 @@ from .worker import (
 print("Starting Schellenberg API...")
 
 
-async def fanout():
+async def fanout_received_messages():
     worker: ReceiveWorker = app.state.receive_worker
     ha_worker: HomeAssistantWorker = app.state.ha_worker
     clients: List[WebSocket] = app.state.websocket_clients
     while True:
         msg = await worker.receivedMessages.get()
-        # Forward to WebSocket clients
         disconnected: List[WebSocket] = []
         for ws in clients:
             try:
                 await ws.send_json(msg.to_dict())
             except Exception:
                 disconnected.append(ws)
-        # Remove disconnected clients
         for ws in disconnected:
             clients.remove(ws)
-        # Forward to Home Assistant worker for state updates
+
         await ha_worker.handle_received_message(msg)
 
 
 async def mqtt_command_forwarder():
-    """Forward MQTT commands from Home Assistant to the send worker."""
     ha_worker: HomeAssistantWorker = app.state.ha_worker
     send_worker: SendWorker = app.state.send_worker
     while True:
-        # Get command from HA worker's queue
         command = await ha_worker.get_send_queue().get()
-        # Forward to send worker
         await send_worker.send(command)
 
 
@@ -86,7 +81,7 @@ async def lifespan(app: FastAPI):
         app.state.receive_worker.start()
         app.state.ha_worker.start()
 
-        asyncio.create_task(fanout())
+        asyncio.create_task(fanout_received_messages())
         asyncio.create_task(mqtt_command_forwarder())
 
         async def mock_open_close_shutters():
@@ -154,7 +149,7 @@ async def lifespan(app: FastAPI):
         app.state.receive_worker.start()
         app.state.ha_worker.start()
 
-        asyncio.create_task(fanout())
+        asyncio.create_task(fanout_received_messages())
         asyncio.create_task(mqtt_command_forwarder())
 
         yield

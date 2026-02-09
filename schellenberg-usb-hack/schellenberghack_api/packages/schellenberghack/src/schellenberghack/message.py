@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
+from typing import Callable, Literal
 
 import serial
 
@@ -98,6 +98,8 @@ class OutgoingSchellenbergMessage:
     command: Command
     num_retries: int = 9
 
+    state_callback: Callable[[DeviceState], None] | None = None
+
     def __bytes__(self) -> bytes:
         return (
             f"ss{self.enumerator}{self.num_retries:X}"
@@ -116,7 +118,15 @@ class OutgoingSchellenbergMessage:
         ser.write(bytes(self))
 
     def post_run(self) -> None:
+        """
+        After a while after sending the command, we assume the new state.
+        This should be spawn a task to change the state after a delay.
+        """
+        if self.state_callback is None:
+            return
         if self.command in [Command.UP, Command.MANUAL_UP]:
-            self.expected_state = DeviceState.OPEN
+            self.state_callback(DeviceState.OPEN)
         elif self.command in [Command.DOWN, Command.MANUAL_DOWN]:
-            self.expected_state = DeviceState.CLOSED
+            self.state_callback(DeviceState.CLOSED)
+        elif self.command == Command.STOP:
+            self.state_callback(DeviceState.STOPPED)
