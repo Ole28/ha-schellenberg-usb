@@ -12,6 +12,11 @@ export default defineNuxtConfig({
   devtools: {
     enabled: true
   },
+
+  app: {
+    baseURL: './',
+    cdnURL: './'
+  },
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
