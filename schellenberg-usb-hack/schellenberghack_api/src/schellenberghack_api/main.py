@@ -1,7 +1,6 @@
+from typing import List
 import asyncio
-import json
 import os
-from asyncio import Queue
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -28,18 +27,19 @@ print("Starting Schellenberg API...")
 async def fanout():
     worker: ReceiveWorker = app.state.receive_worker
     ha_worker: HomeAssistantWorker = app.state.ha_worker
+    clients: List[WebSocket] = app.state.websocket_clients
     while True:
         msg = await worker.receivedMessages.get()
         # Forward to WebSocket clients
-        disconnected = []
-        for ws in app.state.websocket_clients:
+        disconnected: List[WebSocket] = []
+        for ws in clients:
             try:
                 await ws.send_json(msg.to_dict())
-            except Exception as e:
+            except Exception:
                 disconnected.append(ws)
         # Remove disconnected clients
         for ws in disconnected:
-            app.state.websocket_clients.discard(ws)
+            clients.remove(ws)
         # Forward to Home Assistant worker for state updates
         await ha_worker.handle_received_message(msg)
 
@@ -125,6 +125,7 @@ async def lifespan(app: FastAPI):
             )
         except Exception as e:
             print(f"[SERIAL] Error opening serial port \"{serial_port}\": {e}")
+            return
         ser.write(b"hello\n")
         print(f"[SERIAL] Connected to {ser.name}")
         ser.write(b"!?\n")
@@ -172,6 +173,7 @@ class AllDevicesResponse(BaseModel):
     senders: set[SenderDevice]
     self_sender_id: str
 
+
 @app.get("/health")
 def health_check():
     print("Health check received")
@@ -215,19 +217,22 @@ def remove_device(sender_id: str, enumerator: str) -> None:
 
 
 @app.post("/api/devices/specific/{sender_id}/{enumerator}/command")
-async def send_command(sender_id: str, enumerator: str, command: str) -> dict:
+async def send_command(sender_id: str,
+                       enumerator: str,
+                       command: str) -> dict[str, str]:
     """Send a command to a specific device."""
     try:
         # Parse command string to Command enum
-        command_enum = Command[command.upper()]
+        cmd = Command[command.upper()]
     except KeyError:
         return {
             "status": "error",
-            "message": f"Invalid command: {command}. Valid commands: {[c.name for c in Command]}",
+            "message": f"Invalid command: {command}."
+            f" Valid commands: {[c.name for c in Command]}",
         }
 
-    # Verify device exists
-    device = SETTINGS.get_device_by_sender_and_enumerator(sender_id, enumerator)
+    device = SETTINGS.get_device_by_sender_and_enumerator(sender_id,
+                                                          enumerator)
     if not device:
         return {
             "status": "error",
@@ -237,12 +242,12 @@ async def send_command(sender_id: str, enumerator: str, command: str) -> dict:
     # Send command
     send_worker: SendWorker = app.state.send_worker
     await send_worker.send(
-        OutgoingSchellenbergMessage(enumerator=enumerator, command=command_enum)
+        OutgoingSchellenbergMessage(enumerator=enumerator, command=cmd)
     )
 
     return {
         "status": "success",
-        "message": f"Command {command} sent to device {sender_id}/{enumerator}",
+        "message": f"Command {command} sent to {sender_id}/{enumerator}",
     }
 
 
@@ -274,8 +279,11 @@ async def pair_device(receiver_id: str, enumerator: str) -> Device | None:
     new_device = SETTINGS.get_device_by_sender_and_enumerator(
         receiver_id, enumerator
     )
-    if new_device and SETTINGS.self_sender:
-        await ha_worker._publish_discovery_config(SETTINGS.self_sender, new_device)
+    if new_device and new_device.name and SETTINGS.self_sender:
+        await ha_worker.publish_discovery_config(
+            SETTINGS.self_sender,
+            new_device.name
+        )
 
     return SETTINGS.get_device_by_sender_and_enumerator(
         receiver_id, enumerator
@@ -286,21 +294,22 @@ async def pair_device(receiver_id: str, enumerator: str) -> Device | None:
 async def republish_ha_configs():
     """Republish all Home Assistant autodiscovery configurations."""
     ha_worker: HomeAssistantWorker = app.state.ha_worker
-    await ha_worker._publish_all_discovery_configs()
-    return {"status": "success", "message": "Autodiscovery configs republished"}
+    await ha_worker.publish_all_discovery_configs()
+    return {"status": "success", "message": "Autodiscovery republished"}
 
 
 @app.websocket("/api/devices/events")
 async def websocket_events(websocket: WebSocket):
     await websocket.accept()
-    print(f"[WebSocket] Client connected. Total clients: {len(app.state.websocket_clients) + 1}", flush=True)
+    print(f"[WebSocket] Client connected. Total clients: "
+          f"{len(app.state.websocket_clients) + 1}", flush=True)
 
     app.state.websocket_clients.add(websocket)
 
     try:
         # Keep connection alive and wait for client disconnect
         while True:
-            # Receive to detect client disconnect, but we don't process incoming messages
+            # Receive to detect client disconnect, but ignore
             await websocket.receive_text()
     except WebSocketDisconnect:
         print("[WebSocket] Client disconnected", flush=True)
@@ -308,4 +317,5 @@ async def websocket_events(websocket: WebSocket):
         print(f"[WebSocket] Error: {e}", flush=True)
     finally:
         app.state.websocket_clients.discard(websocket)
-        print(f"[WebSocket] Client removed. Total clients: {len(app.state.websocket_clients)}", flush=True)
+        print(f"[WebSocket] Client removed. Total clients: "
+              f"{len(app.state.websocket_clients)}", flush=True)

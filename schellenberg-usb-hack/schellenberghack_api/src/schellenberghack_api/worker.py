@@ -85,12 +85,12 @@ class ReceiveWorker:
                     continue
                 if response:
                     if response == b"t1":
-                        print("transmitter lock")
+                        print("[SERIAL] transmitter lock")
                         if not transmitterLock.locked():
                             await transmitterLock.acquire()
                         continue
                     if response == b"t0":
-                        print("transmitter unlock")
+                        print("[SERIAL] transmitter unlock")
                         finished_transmission.set()
                         continue
                     if response == b"tE":
@@ -100,12 +100,15 @@ class ReceiveWorker:
                             response
                         )
                         await self.receivedMessages.put(message)
-                        print(message)
+                        print(f"[RECEIVED] {message}")
                         if message.command == Command.ALLOW_PAIRING:
                             self.last_pairing_message = message
                             self.pairing_message_received.set()
                     except ValueError as e:
-                        print(f"Error parsing message: {e} ({response})")
+                        print(
+                            f"[RECEIVED] Error parsing message: "
+                            f"{e} ({response})"
+                        )
         except asyncio.CancelledError:
             print("ReceiveWorker cancelled")
             raise
@@ -151,7 +154,7 @@ class ReceiveWorker:
 class MockSendWorker:
     """Mock SendWorker for development without serial connection."""
 
-    def __init__(self, serial=None):
+    def __init__(self, serial: Serial | None = None):
         self.ser = serial
         self.exit_event = Event()
         self.queue: Queue[OutgoingSchellenbergMessage] = Queue()
@@ -177,7 +180,7 @@ class MockSendWorker:
                         await asyncio.sleep(0.1)
                         finished_transmission.clear()
                         message.post_run()
-                        print(f"[MOCK] Message sent successfully")
+                        print("[MOCK] Message sent successfully")
         except asyncio.CancelledError:
             print("MockSendWorker cancelled")
             raise
@@ -198,7 +201,7 @@ class MockSendWorker:
 class MockReceiveWorker:
     """Mock ReceiveWorker for development without serial connection."""
 
-    def __init__(self, serial=None):
+    def __init__(self, serial: Serial | None = None):
         self.ser = serial
         self.pairing_message_received = Event()
         self.last_pairing_message: SchellenbergMessageReceived | None = None
@@ -221,7 +224,9 @@ class MockReceiveWorker:
             print("MockReceiveWorker cancelled")
             raise
 
-    async def simulate_incoming_message(self, message: SchellenbergMessageReceived):
+    async def simulate_incoming_message(
+        self, message: SchellenbergMessageReceived
+    ):
         """Simulate an incoming message from a device."""
         await self.receivedMessages.put(message)
         print(f"[MOCK] Simulated incoming message: {message}")
@@ -241,7 +246,6 @@ class MockReceiveWorker:
 
         # Create a mock pairing message
         print(f"[MOCK] Pairing simulation complete for device {device_id}")
-        # In mock mode, we can't create a real pairing message without proper data
         # Return None to indicate mock mode
         return None
 

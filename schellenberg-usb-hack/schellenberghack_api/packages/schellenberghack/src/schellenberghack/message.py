@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Literal
 
 import serial
@@ -6,6 +7,15 @@ import serial
 from .commands import Command
 from .devices import Device, SenderDevice
 from .settings import SETTINGS
+
+
+class DeviceState(Enum):
+    OPEN = "open"
+    CLOSED = "closed"
+    OPENING = "opening"
+    CLOSING = "closing"
+    STOPPED = "stopped"
+    UNKNOWN = "unknown"
 
 
 @dataclass
@@ -106,5 +116,7 @@ class OutgoingSchellenbergMessage:
         ser.write(bytes(self))
 
     def post_run(self) -> None:
-        if self.command == Command.ALLOW_PAIRING:
-            print(f"[PAIR] Sent PAIR with enumerator (0x{self.enumerator})")
+        if self.command in [Command.UP, Command.MANUAL_UP]:
+            self.expected_state = DeviceState.OPEN
+        elif self.command in [Command.DOWN, Command.MANUAL_DOWN]:
+            self.expected_state = DeviceState.CLOSED
