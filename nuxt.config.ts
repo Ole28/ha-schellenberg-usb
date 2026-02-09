@@ -12,7 +12,6 @@ export default defineNuxtConfig({
   devtools: {
     enabled: true
   },
-
   app: {
     baseURL: './',
     cdnURL: './'
@@ -20,7 +19,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
-    proxyUrl: 'http://localhost:8000'
+    proxyUrl: 'http://127.0.0.1:8000'
   },
 
   compatibilityDate: '2025-01-15',
@@ -36,7 +35,7 @@ export default defineNuxtConfig({
   openFetch: {
     clients: {
       schellenberg: {
-        baseURL: 'http://localhost:3000/',
+        baseURL: './',
         schema: 'http://localhost:8000/openapi.json'
       }
     }

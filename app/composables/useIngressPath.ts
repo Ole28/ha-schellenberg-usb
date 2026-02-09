@@ -3,9 +3,9 @@ export const useIngressPath = () => {
 
   const loadIngressPath = async () => {
     try {
-      const { ingressPath } = await $fetch('/api/ingress-path')
+      const { ingressPath } = await $fetch('./api/ingress-path')
       if (ingressPath) {
-        config.public.openFetch.schellenberg.baseURL = `http://localhost:3000${ingressPath}`
+        config.public.openFetch.schellenberg.baseURL = ingressPath
         console.log(`Client using ingress path: ${ingressPath}`)
       }
     } catch (error) {
