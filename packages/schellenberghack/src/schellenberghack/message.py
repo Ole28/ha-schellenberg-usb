@@ -107,4 +107,4 @@ class OutgoingSchellenbergMessage:
 
     def post_run(self) -> None:
         if self.command == Command.ALLOW_PAIRING:
-            print(f"Sent PAIR with enumerator (0x{self.enumerator})")
+            print(f"[PAIR] Sent PAIR with enumerator (0x{self.enumerator})")

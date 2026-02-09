@@ -7,7 +7,6 @@ from .devices import Device, SenderDevice
 
 
 class Settings(BaseModel):
-    serial_port: str = "COM3"
     baud_rate: int = 9600
     timeout: int = 10
     senders: set[SenderDevice] = set()
@@ -45,7 +44,7 @@ class Settings(BaseModel):
             self.save()
 
     def pair_device(self, enumerator: str, name: str | None = None) -> None:
-        print(f"Pairing device with enumerator {enumerator}")
+        print(f"[PAIR] Pairing device with enumerator {enumerator}")
         if not self.self_sender:
             raise ValueError("Self sender device not initialized")
         self.self_sender.connected_devices.add(
@@ -109,7 +108,6 @@ class Settings(BaseModel):
     def __hash__(self) -> int:
         return hash(
             (
-                self.serial_port,
                 self.baud_rate,
                 self.timeout,
                 frozenset(self.senders),

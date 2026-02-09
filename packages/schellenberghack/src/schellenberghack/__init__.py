@@ -18,40 +18,23 @@ def reader(ser: serial.Serial) -> None:
         response = ser.readline().strip()
         if response:
             if response == b"t1":
-                print("transmitter lock")
+                print("[SERIAL] transmitter lock")
                 TRANSMITTER_LOCK.acquire(False)
                 continue
             if response == b"t0":
-                print("transmitter unlock")
+                print("[SERIAL] transmitter unlock")
                 TRANSMITTER_LOCK.release()
                 continue
             if response == b"tE":
                 raise RuntimeError("Transmitter error")
             try:
                 message = SchellenbergMessageReceived.from_bytes(response)
-                print(message)
+                print(f"[SERIAL] Received message: {message}")
                 if message.command == Command.ALLOW_PAIRING:
                     global last_pairing_message
                     last_pairing_message = message
             except ValueError as e:
-                print(f"Error parsing message: {e} ({response})")
-                # print(pretty_print_response(response))
-
-
-def pretty_print_response(response: bytes) -> None:
-    if len(response) == 20 and response.startswith(b"ss"):
-        device_enumerator = int(response[2:4], 16)
-        device_id = int(response[4:10], 16)
-        command_code = int(response[10:12], 16)
-        counter = int(response[12:16], 16)
-        local_counter = int(response[16:18], 16)
-        signal_strength = int(response[18:20], 16)
-        print(f"{device_enumerator=:02X}")
-        print(f"        {device_id=:06X}")
-        print(f"     {command_code=:02X}")
-        print(f"          {counter=:04X}")
-        print(f"    {local_counter=:02X}")
-        print(f"  {signal_strength=}")
+                print(f"[SERIAL] Error parsing message: {e} ({response})")
 
 
 def writer(ser: serial.Serial) -> None:
@@ -109,7 +92,7 @@ def stdin_reader() -> None:
 
 def cli() -> None:
     with serial.Serial(
-        SETTINGS.serial_port, SETTINGS.baud_rate, timeout=SETTINGS.timeout
+        "COM3", SETTINGS.baud_rate, timeout=SETTINGS.timeout
     ) as ser:
         ser.write(b"hello\n")
         print(f"Connected to {ser.name}")
